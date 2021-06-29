@@ -101,6 +101,12 @@ tree at the time of stashing."
   :group 'magit-ediff
   :type 'boolean)
 
+(defcustom magit-ediff-use-indirect-buffers nil
+  "TODO"
+  :package-version '(magit . "3.1.0")
+  :group 'magit-ediff
+  :type 'boolean)
+
 ;;; Commands
 
 (defvar magit-ediff-previous-winconf nil)
@@ -213,7 +219,15 @@ FILE has to be relative to the top directory of the repository."
     (pcase-dolist (`(,g ,m) spec)
       (let ((b (intern (format "buf%c" (cl-incf char)))))
         (push `(,b ,g) get)
-        (push `(or ,b ,g) make)
+        (push `(if ,b
+                   (if magit-ediff-use-indirect-buffers
+                       (prog1
+                           (make-indirect-buffer
+                            ,b (generate-new-buffer-name (buffer-name ,b)) t)
+                         (setq ,b nil))
+                     ,b)
+                 ,m)
+              make)
         (push `(unless ,b (ediff-kill-buffer-carefully ediff-buffer-A)) kill)))
     (setq get  (nreverse get))
     (setq make (nreverse make))
